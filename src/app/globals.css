@@ -1,16 +1,83 @@
 @import "tailwindcss";
 
+/* Cú pháp đúng 100% của Tailwind CSS v4 cho class-based Dark Mode */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #090D16;
   --foreground: #F9FAFB;
+  --player-height: calc(132px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  :root { --player-height: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+
+[data-player] {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.player-range { height: 24px; background: transparent; }
+.player-range::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: #94a3b8; }
+.player-range::-webkit-slider-thumb { margin-top: -4px; }
+.player-range::-moz-range-track { height: 4px; border-radius: 999px; background: #94a3b8; }
+
+#main-content { scroll-padding-block: 16px; }
+[inert] { pointer-events: none; }
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
 }
 
 body {
-  background: #090D16;
-  color: #F9FAFB;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  user-select: none;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Glassmorphism chuẩn xác theo từng theme */
+.glass-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* DARK MODE: Card nền tối bán trong suốt, viền sáng nhẹ, chữ trắng */
+.dark .glass-card {
+  background: rgba(31, 41, 55, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #F9FAFB !important;
+  box-shadow: none;
+}
+
+.dark .glass-card:hover {
+  background: rgba(31, 41, 55, 0.8) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+    box-shadow: none;
+}
+
+/* LIGHT MODE: Card nền trắng sáng, viền xám nhẹ, chữ đen tuyền */
+.light .glass-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #0F172A !important;
+  box-shadow: none;
+}
+
+.light .glass-card:hover {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: none;
 }
 
 /* Custom Scrollbar - Neon Glow Style */
@@ -24,19 +91,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #10B981 0%, #6366F1 100%);
+  background: #64748b;
   border-radius: 9999px;
   transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #34D399 0%, #818CF8 100%);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.75);
+  background: #475569;
 }
 
 /* Spotify Stealth Scrollbar for Main Feeds */
 .spotify-scroll {
   scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.dark .spotify-scroll {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
@@ -45,34 +115,12 @@ body {
 }
 
 .spotify-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(148, 163, 184, 0.3);
   border-radius: 9999px;
 }
 
-.spotify-scroll:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-/* Glassmorphism utility */
-.glass-panel {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card {
-  background: rgba(31, 41, 55, 0.5);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  background: rgba(31, 41, 55, 0.8);
-  border-color: rgba(16, 185, 129, 0.3);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(16, 185, 129, 0.15);
+.dark .spotify-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Vinyl rotation animation */
@@ -87,4 +135,47 @@ body {
 
 .animate-spin-slow {
   animation: spin-slow 12s linear infinite;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Native Modal & Drawer Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-in {
+  animation-duration: 250ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.slide-in-from-right {
+  animation-name: slideInFromRight;
 }

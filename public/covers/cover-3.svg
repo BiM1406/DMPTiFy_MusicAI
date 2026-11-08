@@ -31,6 +31,6 @@
   </g>
 
   <!-- Typography -->
-  <text x="250" y="440" font-family="'Outfit', sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Ánh Sao & Bầu Trời</text>
+  <text x="250" y="440" font-family="'Outfit', sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Ánh Sao &amp; Bầu Trời</text>
   <text x="250" y="470" font-family="'Inter', sans-serif" font-size="16" fill="#94A3B8" text-anchor="middle">T.R.I x Cá</text>
 </svg>

@@ -7,3 +7,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `BiM1406/DMPTiFy_MusicAI`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The repository uses the five default triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+The repository uses a single-context domain-document layout. See `docs/agents/domain.md`.

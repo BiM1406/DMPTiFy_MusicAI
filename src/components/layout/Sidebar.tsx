@@ -1,106 +1,49 @@
 'use client';
+import React, { useEffect, useRef, useState } from 'react';
+import { Compass, ChartNoAxesColumn, Library, Plus, Heart, MessageCircle, ListMusic, X } from 'lucide-react';
+import { useAudioStore, LibraryView } from '../../store/useAudioStore';
+import { usePanelFocus } from '../../hooks/usePanelFocus';
 
-import React from 'react';
-import { Home, Compass, Library, PlusSquare, Heart, Sparkles, Crown, Music2 } from 'lucide-react';
-import { useAudioStore } from '../../store/useAudioStore';
-import { MOCK_PLAYLISTS } from '../../lib/mock-songs';
-
-export const Sidebar: React.FC = () => {
-  const { toggleAiDrawer, isAiDrawerOpen } = useAudioStore();
-
-  return (
-    <aside className="w-64 h-[calc(100vh-88px)] bg-[#0B0F19] border-r border-white/5 flex flex-col justify-between p-4 shrink-0 select-none">
-      <div className="flex flex-col gap-6">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 px-2 py-1">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Music2 className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">
-              DMPTiFy
-            </span>
-            <span className="block text-[10px] text-emerald-400 font-semibold tracking-wider -mt-1">
-              AI MUSIC STREAM
-            </span>
-          </div>
-        </div>
-
-        {/* Primary Navigation */}
-        <nav className="flex flex-col gap-1">
-          <button className="flex items-center gap-4 px-3 py-2.5 rounded-xl bg-white/10 text-white font-medium text-sm transition-all">
-            <Home className="w-5 h-5 text-emerald-400" />
-            <span>Khám Phá</span>
-          </button>
-          <button className="flex items-center gap-4 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all">
-            <Compass className="w-5 h-5" />
-            <span>Bảng Xếp Hạng</span>
-          </button>
-          <button className="flex items-center gap-4 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all">
-            <Library className="w-5 h-5" />
-            <span>Thư Viện Của Bạn</span>
-          </button>
-          
-          {/* AI Mood Button */}
-          <button
-            onClick={toggleAiDrawer}
-            className={`flex items-center gap-4 px-3 py-2.5 rounded-xl font-medium text-sm transition-all mt-1 ${
-              isAiDrawerOpen
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
-                : 'bg-indigo-950/40 text-indigo-300 hover:bg-indigo-900/60 border border-indigo-500/20'
-            }`}
-          >
-            <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
-            <span>Trợ Lý Cảm Xúc AI</span>
-          </button>
-        </nav>
-
-        {/* Playlists Section */}
-        <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
-          <div className="flex items-center justify-between px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            <span>Danh Sách Phát</span>
-            <PlusSquare className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-          </div>
-
-          <div className="flex flex-col gap-1 max-h-48 overflow-y-auto spotify-scroll pr-1">
-            <button className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-sm transition-colors text-left truncate">
-              <div className="w-6 h-6 rounded bg-gradient-to-tr from-rose-500 to-purple-600 flex items-center justify-center shrink-0">
-                <Heart className="w-3.5 h-3.5 text-white fill-white" />
-              </div>
-              <span className="truncate">Bài Hát Đã Thích</span>
-            </button>
-
-            {MOCK_PLAYLISTS.map((pl) => (
-              <button
-                key={pl.id}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-sm transition-colors text-left truncate"
-              >
-                {pl.isAiGenerated && (
-                  <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
-                )}
-                <span className="truncate">{pl.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+interface SidebarProps { isMobileOpen: boolean; onMobileClose: () => void }
+export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
+  const view = useAudioStore(s => s.view);
+  const activePlaylistId = useAudioStore(s => s.activePlaylistId);
+  const playlists = useAudioStore(s => s.playlists);
+  const setView = useAudioStore(s => s.setView);
+  const selectPlaylist = useAudioStore(s => s.selectPlaylist);
+  const createPlaylist = useAudioStore(s => s.createPlaylist);
+  const toggleAiDrawer = useAudioStore(s => s.toggleAiDrawer);
+  const isAiDrawerOpen = useAudioStore(s => s.isAiDrawerOpen);
+  const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState('');
+  const panelRef = useRef<HTMLElement>(null);
+  usePanelFocus(panelRef, isMobileOpen);
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') onMobileClose(); };
+    window.addEventListener('keydown', close);
+    const media = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => { if (media.matches) onMobileClose(); };
+    media.addEventListener('change', closeOnDesktop);
+    return () => { window.removeEventListener('keydown', close); media.removeEventListener('change', closeOnDesktop); };
+  }, [isMobileOpen, onMobileClose]);
+  const navigate = (value: LibraryView) => { setView(value); onMobileClose(); };
+  const item = (active: boolean) => `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors ${active ? 'bg-slate-100 font-semibold text-slate-900 dark:bg-white/10 dark:text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5'}`;
+  return <>
+    {isMobileOpen && <button data-panel-backdrop tabIndex={-1} type="button" aria-label="Đóng menu điều hướng" onClick={onMobileClose} className="fixed inset-0 z-50 bg-black/40 md:hidden" />}
+    <aside ref={panelRef} role={isMobileOpen ? 'dialog' : undefined} aria-modal={isMobileOpen || undefined} tabIndex={-1} aria-label="Menu chính" className={`fixed bottom-0 left-0 top-0 z-[60] w-64 shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white p-4 dark:border-white/5 dark:bg-[#0B0F19] md:static md:z-auto md:h-full ${isMobileOpen ? 'flex' : 'hidden md:flex'}`}>
+      <div className="mb-8 flex items-center justify-between px-3 py-2"><span className="text-xl font-bold tracking-tight">DMPTiFy<span className="text-emerald-500">.</span></span><button type="button" onClick={onMobileClose} aria-label="Đóng menu" className="flex h-11 w-11 items-center justify-center md:hidden"><X size={20} /></button></div>
+      <nav aria-label="Điều hướng" className="space-y-1">
+        {([{ id: 'discover', label: 'Khám phá', Icon: Compass }, { id: 'charts', label: 'Xếp hạng demo', Icon: ChartNoAxesColumn }, { id: 'library', label: 'Thư viện', Icon: Library }] as const).map(({id, label, Icon}) => <button type="button" key={id} onClick={() => navigate(id)} aria-current={view === id && !activePlaylistId ? 'page' : undefined} className={item(view === id && !activePlaylistId)}><Icon size={19} strokeWidth={1.7} /><span>{label}</span></button>)}
+        <button type="button" onClick={() => { toggleAiDrawer(); onMobileClose(); }} aria-expanded={isAiDrawerOpen} className={item(isAiDrawerOpen)}><MessageCircle size={19} strokeWidth={1.7} /><span>Trò chuyện</span></button>
+      </nav>
+      <div className="mt-7 border-t border-slate-200 pt-5 dark:border-white/10">
+        <div className="mb-2 flex items-center justify-between px-3"><h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">Danh sách phát</h2><button type="button" aria-label="Tạo danh sách từ bài đang chọn" aria-expanded={creating} onClick={() => setCreating(!creating)} className="flex h-11 w-11 items-center justify-center"><Plus size={17} /></button></div>
+        {creating && <form className="mb-3 space-y-2 px-2" onSubmit={e => { e.preventDefault(); if (!title.trim()) return; createPlaylist(title); setTitle(''); setCreating(false); onMobileClose(); }}><label className="text-xs" htmlFor="playlist-name">Tên danh sách (thêm bài đang chọn)</label><input autoFocus id="playlist-name" maxLength={80} required value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded border border-slate-300 bg-transparent p-2 text-sm dark:border-white/20" /><button type="submit" className="rounded bg-emerald-600 px-3 py-2 text-xs text-white">Tạo danh sách</button></form>}
+        <button type="button" className={item(view === 'library')} onClick={() => navigate('library')}><Heart size={18} strokeWidth={1.7} /><span>Bài hát đã thích</span></button>
+        {playlists.map(pl => <button type="button" key={pl.id} onClick={() => { selectPlaylist(pl.id); onMobileClose(); }} className={item(activePlaylistId === pl.id)} aria-current={activePlaylistId === pl.id ? 'page' : undefined}><ListMusic size={18} strokeWidth={1.7} className="shrink-0" /><span className="truncate">{pl.title}</span></button>)}
       </div>
-
-      {/* VIP Upgrade Banner */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-b from-amber-500/15 to-amber-950/20 border border-amber-500/30 flex flex-col gap-2 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
-        <div className="flex items-center gap-2">
-          <Crown className="w-4 h-4 text-amber-400" />
-          <span className="text-xs font-bold text-amber-300 tracking-wide">
-            DMPTiFy VIP
-          </span>
-        </div>
-        <p className="text-[11px] text-slate-300 leading-snug">
-          Nghe nhạc Lossless 320kbps & tạo playlist AI không giới hạn.
-        </p>
-        <button className="w-full py-1.5 px-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition-all">
-          Nâng Cấp 49.000đ/tháng
-        </button>
-      </div>
+      <p className="mt-auto px-3 pt-8 text-xs leading-5 text-slate-500">Bản demo · Danh sách của bạn được lưu trong phiên này.</p>
     </aside>
-  );
+  </>;
 };

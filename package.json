@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint src tests",
+    "test:fe": "node --test tests/*.test.mjs",
+    "export:context": "powershell -ExecutionPolicy Bypass -File ./scripts/export-context.ps1"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",
