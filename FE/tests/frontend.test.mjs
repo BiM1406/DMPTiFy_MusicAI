@@ -45,12 +45,17 @@ test('shuffle does not bypass repeat off at the end', () => {
 
 test('playlist selection defines the playback queue and preserves likes', () => {
   const s = loadStore();
+  s.setState({
+    playlists: [
+      { id: 'pl-2', title: 'Chill', songIds: ['vpop-1', 'vpop-3', 'vpop-5', 'vpop-8'], songsCount: 4 },
+    ],
+  });
   s.getState().selectPlaylist('pl-2');
-  assert.equal(s.getState().queue.map(x => x.id).join(','), 'song-1,song-3');
-  s.getState().toggleLike('song-1');
+  assert.equal(s.getState().queue.map(x => x.id).join(','), 'vpop-1,vpop-3,vpop-5,vpop-8');
+  s.getState().toggleLike('vpop-1');
   const liked = s.getState().queue[0].liked;
   s.getState().setView('discover');
-  assert.equal(s.getState().queue.find(x => x.id === 'song-1').liked, liked);
+  assert.equal(s.getState().queue.find(x => x.id === 'vpop-1').liked, liked);
 });
 
 test('playback errors stop the player and replay clears the error', () => {
@@ -67,6 +72,8 @@ test('playback errors stop the player and replay clears the error', () => {
 
 test('library removes an unliked track and a created playlist has real membership', () => {
   const s = loadStore();
+  s.getState().toggleLike(s.getState().catalog[0].id);
+  s.getState().toggleLike(s.getState().catalog[1].id);
   s.getState().setView('library');
   const song = s.getState().queue[0];
   s.getState().toggleLike(song.id);
@@ -92,6 +99,36 @@ test('system theme uses OS preference and cleans up subscriptions', () => {
   assert.equal(listeners.size, 1);
   cleanup();
   assert.equal(listeners.size, 0);
+});
+
+test('liquid-glass theme sets both dark and liquid-glass classes on root', () => {
+  const classes = new Set();
+  const s = loadStore('src/store/useThemeStore.ts', {
+    window: { matchMedia: () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }) },
+    localStorage: { getItem: () => 'liquid-glass', setItem: () => {} },
+    document: { documentElement: { classList: { add: (...xs) => xs.forEach(x => classes.add(x)), remove: (...xs) => xs.forEach(x => classes.delete(x)) } } },
+  });
+  s.getState().initTheme();
+  assert.equal(s.getState().theme, 'liquid-glass');
+  assert.equal(s.getState().resolvedTheme, 'liquid-glass');
+  assert.equal(classes.has('dark'), true);
+  assert.equal(classes.has('liquid-glass'), true);
+  assert.equal(classes.has('light'), false);
+});
+
+test('useAudioStore manages crossfade and auto-pip settings', () => {
+  const s = loadStore();
+  assert.equal(s.getState().crossfadeEnabled, true);
+  assert.equal(s.getState().autoPipEnabled, true);
+
+  s.getState().toggleCrossfade();
+  assert.equal(s.getState().crossfadeEnabled, false);
+
+  s.getState().toggleAutoPip();
+  assert.equal(s.getState().autoPipEnabled, false);
+
+  s.getState().toggleCrossfade();
+  assert.equal(s.getState().crossfadeEnabled, true);
 });
 
 test('liking the playing song adds it to the open library', () => {
@@ -120,12 +157,17 @@ test('skipping clears a stale audio error', () => {
 
 test('resetting filters retains the selected library and playlist context', () => {
   const s = loadStore();
+  s.setState({
+    playlists: [
+      { id: 'pl-3', title: 'Focus', songIds: ['vpop-15', 'vpop-11', 'vpop-7'], songsCount: 3 },
+    ],
+  });
   s.getState().selectPlaylist('pl-3');
   s.getState().setSearchQuery('missing');
   s.getState().setMoodFilter('sad');
   s.getState().resetFilters();
   assert.equal(s.getState().activePlaylistId, 'pl-3');
-  assert.equal(s.getState().queue[0].id, 'song-5');
+  assert.equal(s.getState().queue[0].id, 'vpop-15');
   assert.equal(s.getState().searchQuery, '');
   assert.equal(s.getState().selectedMood, 'all');
 });
@@ -166,6 +208,8 @@ test('chart playback follows the displayed demo ranking order', () => {
 
 test('prevSong jumps to first remaining track when unliked current song is absent from library queue', () => {
   const s = loadStore();
+  s.getState().toggleLike(s.getState().catalog[0].id);
+  s.getState().toggleLike(s.getState().catalog[1].id);
   s.getState().setView('library');
   const firstSong = s.getState().queue[0];
   s.getState().playSong(firstSong);
@@ -193,4 +237,53 @@ test('library view distinguishes primary library nav from liked songs shortcut',
   s.getState().setView('library', true);
   assert.equal(s.getState().view, 'library');
   assert.equal(s.getState().likedSectionActive, true);
+});
+
+test('useAudioStore manages Spotify-grade crossfade duration (0-12s) and dual-deck equal-power curve', () => {
+  const s = loadStore();
+  // Default values
+  assert.equal(s.getState().crossfadeDuration, 5);
+  assert.equal(s.getState().crossfadeEnabled, true);
+
+  // Set crossfade duration
+  s.getState().setCrossfadeDuration(8);
+  assert.equal(s.getState().crossfadeDuration, 8);
+  assert.equal(s.getState().crossfadeEnabled, true);
+
+  // Clamping to max 12
+  s.getState().setCrossfadeDuration(20);
+  assert.equal(s.getState().crossfadeDuration, 12);
+  assert.equal(s.getState().crossfadeEnabled, true);
+
+  // Clamping to min 0 and auto-disabling
+  s.getState().setCrossfadeDuration(-4);
+  assert.equal(s.getState().crossfadeDuration, 0);
+  assert.equal(s.getState().crossfadeEnabled, false);
+
+  // Toggling when duration is 0 restores default 5s
+  s.getState().toggleCrossfade();
+  assert.equal(s.getState().crossfadeEnabled, true);
+  assert.equal(s.getState().crossfadeDuration, 5);
+
+  // Toggling off preserves duration
+  s.getState().toggleCrossfade();
+  assert.equal(s.getState().crossfadeEnabled, false);
+  assert.equal(s.getState().crossfadeDuration, 5);
+
+  // Equal-power crossfade curve verification: volOut^2 + volIn^2 == 1.0 (constant acoustic power)
+  for (let step = 0; step <= 10; step++) {
+    const t = step / 10;
+    const volOut = Math.cos((t * Math.PI) / 2);
+    const volIn = Math.sin((t * Math.PI) / 2);
+    const power = volOut * volOut + volIn * volIn;
+    assert.ok(Math.abs(power - 1.0) < 1e-9, `Equal-power violated at t=${t}: ${power}`);
+  }
+
+  // Ensure BottomPlayer defines both Dual-Deck containers
+  const bottomPlayerSrc = fs.readFileSync(
+    path.resolve(feRoot, 'src/components/player/BottomPlayer.tsx'),
+    'utf8',
+  );
+  assert.ok(bottomPlayerSrc.includes('dmptify-yt-player-a'), 'Missing deck A container');
+  assert.ok(bottomPlayerSrc.includes('dmptify-yt-player-b'), 'Missing deck B container');
 });

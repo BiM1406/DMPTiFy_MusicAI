@@ -7,14 +7,30 @@ import { MainContent } from '../components/layout/MainContent';
 import { BottomPlayer } from '../components/player/BottomPlayer';
 import { KaraokeLyricsModal } from '../components/player/KaraokeLyricsModal';
 import { AiChatDrawer } from '../components/ai/AiChatDrawer';
+import { AuthModal } from '../components/auth/AuthModal';
+import { JamRoomModal } from '../components/jam/JamRoomModal';
+import { useJamStore } from '../store/useJamStore';
 import { useLibraryNavigation } from '../hooks/useLibraryNavigation';
+import { useBackendSync } from '../hooks/useBackendSync';
+import { useLiveSongSearch } from '../hooks/useLiveSongSearch';
 
 export default function Home() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   useLibraryNavigation();
+  useBackendSync();
+  useLiveSongSearch();
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const jamCode = new URLSearchParams(window.location.search).get('jam');
+      if (jamCode) {
+        useJamStore.getState().openModal(jamCode);
+      }
+    }
+  }, []);
 
   return (
-    <div id="music-app" className="flex h-dvh w-full overflow-hidden bg-slate-50 dark:bg-[#090D16] pb-[132px] sm:pb-[88px] text-slate-900 dark:text-white transition-colors duration-300">
+    <div id="music-app" className="flex h-dvh w-full overflow-hidden bg-surface-canvas pb-player text-slate-900 dark:text-white transition-colors duration-300">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded focus:bg-white focus:p-3 focus:text-slate-900">Đến nội dung chính</a>
       {/* 1. Left Sidebar Navigation (drawer on mobile, fixed column on md+) */}
       <Sidebar
@@ -34,7 +50,13 @@ export default function Home() {
       {/* 4. Fullscreen Karaoke Lyrics Sync Modal */}
       <KaraokeLyricsModal />
 
-      {/* 5. Persistent Fixed Bottom Music Player */}
+      {/* 5. Account Login / Register / Google OAuth Modal */}
+      <AuthModal />
+
+      {/* 6. Listen Together Jam Room Modal */}
+      <JamRoomModal />
+
+      {/* 7. Persistent Fixed Bottom Music Player */}
       <BottomPlayer />
     </div>
   );

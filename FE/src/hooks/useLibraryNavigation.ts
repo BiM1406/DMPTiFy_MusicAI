@@ -15,7 +15,8 @@ export function useLibraryNavigation() {
         const restored = saved.slice(0, 100).flatMap(p => {
           if (!p || typeof p.id !== 'string' || !p.id.startsWith('local-') || typeof p.title !== 'string' || !p.title.trim() || !Array.isArray(p.songIds)) return [];
           const songIds = [...new Set<string>(p.songIds.filter((id: unknown): id is string => typeof id === 'string' && catalog.some(s => s.id === id)))];
-          return [{ id: p.id.slice(0, 100), title: p.title.trim().slice(0, 80), description: 'Danh sách của bạn · lưu trong phiên này', coverUrl: '/covers/cover-1.svg', songIds, songsCount: songIds.length }];
+          const firstCover = catalog.find(s => s.id === songIds[0])?.coverUrl ?? catalog[0]?.coverUrl ?? '';
+          return [{ id: p.id.slice(0, 100), title: p.title.trim().slice(0, 80), description: 'Danh sách cá nhân', coverUrl: firstCover, songIds, songsCount: songIds.length }];
         });
         const builtIn = store.getState().playlists.filter(p => !p.id.startsWith('local-'));
         store.setState({ playlists: [...builtIn, ...restored.filter((p, i) => restored.findIndex(x => x.id === p.id) === i)] });
@@ -30,7 +31,7 @@ export function useLibraryNavigation() {
       const selected = s.playlists.find(p => p.id === route.playlist);
       store.setState({ view: selected ? 'discover' : route.view, activePlaylistId: selected?.id ?? null,
         selectedMood: route.mood, searchQuery: route.query,
-        queue: selected ? selected.songIds.flatMap(id => s.catalog.filter(song => song.id === id)) : route.view === 'library' ? s.catalog.filter(song => song.liked) : route.view === 'charts' ? [...s.catalog].reverse() : s.catalog });
+        queue: selected ? selected.songIds.flatMap(id => s.catalog.filter(song => song.id === id)) : route.view === 'library' ? s.catalog.filter(song => song.liked) : route.view === 'charts' ? (s.chartsCatalog ?? [...s.catalog].reverse()) : s.catalog });
       restoring = false;
     };
     apply();

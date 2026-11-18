@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import { X, MessageCircle, LoaderCircle, Send, Play, Bot, User, CheckCircle2 } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { MOCK_SONGS } from '../../lib/mock-songs';
 import { Song } from '../../types/music';
 import { usePanelFocus } from '../../hooks/usePanelFocus';
 import { preferredScrollBehavior } from '../../lib/motion';
+import { sendAiMoodChat } from '../../lib/api-client';
+import { CoverImage } from '../common/CoverImage';
 
 interface ChatMessage {
   id: string;
@@ -25,19 +27,72 @@ const QUICK_PROMPTS = [
   'Đang cần tập trung cao độ để code Next.js',
 ];
 
+function buildLocalFallbackReply(
+  text: string,
+  catalog: Song[],
+): {
+  detectedMood: string;
+  targetBpm: number;
+  replyText: string;
+  recommendedSongs: Song[];
+} {
+  const pool = catalog.length > 0 ? catalog : MOCK_SONGS;
+  const pick = (...indices: number[]) =>
+    indices.map((idx) => pool[idx] ?? MOCK_SONGS[idx]).filter(Boolean);
+
+  const lower = text.toLowerCase();
+  if (lower.includes('buồn') || lower.includes('mưa') || lower.includes('áp lực') || lower.includes('mệt')) {
+    return {
+      detectedMood: 'U Buồn & Hoài Niệm (Sad / Healing)',
+      targetBpm: 68,
+      replyText:
+        'Nghe anh chia sẻ em hiểu anh đang phải trải qua một ngày nhiều áp lực. Đừng quá khắt khe với bản thân nhé, em đã bốc cho anh một liều thuốc âm nhạc piano mộc mạc dưới đây:',
+      recommendedSongs: pick(1, 0),
+    };
+  }
+  if (lower.includes('ăn mừng') || lower.includes('quẩy') || lower.includes('năng lượng') || lower.includes('xong')) {
+    return {
+      detectedMood: 'Năng Động & Phấn Khởi (Energetic)',
+      targetBpm: 115,
+      replyText:
+        'Tuyệt vời quá anh ơi! Chúc mừng anh đã hoàn thành xuất sắc mục tiêu. Cùng bật nhạc sôi động lên để sạc đầy dopamine nào!',
+      recommendedSongs: pick(3, 0),
+    };
+  }
+  if (lower.includes('tập trung') || lower.includes('code') || lower.includes('học')) {
+    return {
+      detectedMood: 'Tập Trung Cao Độ (Alpha Waves - Focus)',
+      targetBpm: 72,
+      replyText:
+        'Em đã lọc ra các bản Lofi nhịp điệu 72 BPM chuẩn sóng não Alpha, giúp anh tập trung tối đa mà không bị xao nhãng:',
+      recommendedSongs: pick(4, 2),
+    };
+  }
+  return {
+    detectedMood: 'Thư Giãn & Chill (Acoustic)',
+    targetBpm: 80,
+    replyText: 'Em đã lắng nghe câu chuyện của anh. Hãy để những giai điệu này xoa dịu tâm trí anh nhé!',
+    recommendedSongs: pick(0, 2, 4),
+  };
+}
+
 export const AiChatDrawer: React.FC = () => {
   const isAiDrawerOpen = useAudioStore((s) => s.isAiDrawerOpen);
   const toggleAiDrawer = useAudioStore((s) => s.toggleAiDrawer);
   const playSong = useAudioStore((s) => s.playSong);
+  const catalog = useAudioStore((s) => s.catalog);
+  const authUser = useAuthStore((s) => s.user);
   const panelRef = useRef<HTMLElement>(null);
   usePanelFocus(panelRef, isAiDrawerOpen, true);
 
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: 'welcome',
       sender: 'ai',
-      text: 'Chào anh Đạt! Em là Trợ lý Cảm xúc AI của DMPTiFy. Hôm nay tâm trạng anh thế nào? Hãy tâm sự với em để em chọn đúng giai điệu chữa lành cho anh nhé!',
+      text: authUser
+        ? `Chào ${authUser.fullName}! Em là Trợ lý Cảm xúc AI của DMPTiFy. Hôm nay tâm trạng của bạn thế nào? Hãy tâm sự để em chọn đúng giai điệu chữa lành nhé.`
+        : 'Chào bạn! Em là Trợ lý Cảm xúc AI của DMPTiFy. Hôm nay tâm trạng của bạn thế nào? Hãy chia sẻ để em chọn đúng giai điệu phù hợp nhé.',
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -45,7 +100,16 @@ export const AiChatDrawer: React.FC = () => {
   const messageIdRef = useRef(0);
   const pendingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  const abortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      abortRef.current?.abort();
+    };
+  }, []);
   useEffect(() => {
     if (!isAiDrawerOpen) return;
     const close = (e: KeyboardEvent) => { if (e.key === 'Escape') toggleAiDrawer(); };
@@ -58,7 +122,7 @@ export const AiChatDrawer: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: preferredScrollBehavior() });
   }, [messages, isTyping]);
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputMessage;
     if (!text.trim() || pendingRef.current) return;
     pendingRef.current = true;
@@ -73,67 +137,73 @@ export const AiChatDrawer: React.FC = () => {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate Gemini 2.5 Flash Function Calling
-    timerRef.current = setTimeout(() => {
-      let detectedMood = 'chill';
-      let targetBpm = 75;
-      let replyText = 'Em đã lắng nghe câu chuyện của anh. Hãy để những giai điệu này xoa dịu tâm trí anh nhé!';
-      let recommended: Song[] = [MOCK_SONGS[0], MOCK_SONGS[2]];
+    abortRef.current?.abort();
+    const controller =
+      typeof AbortController !== 'undefined' ? new AbortController() : null;
+    abortRef.current = controller;
 
-      const lower = text.toLowerCase();
-      if (lower.includes('buồn') || lower.includes('mưa') || lower.includes('áp lực') || lower.includes('mệt')) {
-        detectedMood = 'U Buồn & Hoài Niệm (Sad / Healing)';
-        targetBpm = 68;
-        replyText = 'Nghe anh chia sẻ em hiểu anh đang phải trải qua một ngày nhiều áp lực. Đừng quá khắt khe với bản thân nhé, em đã bốc cho anh một liều thuốc âm nhạc piano mộc mạc dưới đây:';
-        recommended = [MOCK_SONGS[1], MOCK_SONGS[0]];
-      } else if (lower.includes('ăn mừng') || lower.includes('quẩy') || lower.includes('năng lượng') || lower.includes('xong')) {
-        detectedMood = 'Năng Động & Phấn Khởi (Energetic)';
-        targetBpm = 115;
-        replyText = 'Tuyệt vời quá anh ơi! Chúc mừng anh đã hoàn thành xuất sắc mục tiêu. Cùng bật nhạc sôi động lên để sạc đầy dopamine nào!';
-        recommended = [MOCK_SONGS[3], MOCK_SONGS[0]];
-      } else if (lower.includes('tập trung') || lower.includes('code') || lower.includes('học')) {
-        detectedMood = 'Tập Trung Cao Độ (Alpha Waves - Focus)';
-        targetBpm = 72;
-        replyText = 'Em đã lọc ra các bản Lofi nhịp điệu 72 BPM chuẩn sóng não Alpha, giúp anh tập trung tối đa mà không bị xao nhãng:';
-        recommended = [MOCK_SONGS[4], MOCK_SONGS[2]];
-      } else {
-        detectedMood = 'Thư Giãn & Chill (Acoustic)';
-        targetBpm = 80;
-        recommended = [MOCK_SONGS[0], MOCK_SONGS[2], MOCK_SONGS[4]];
-      }
+    const backendReply = await sendAiMoodChat(text, {
+      signal: controller?.signal,
+    });
+
+    if (!isMountedRef.current || controller?.signal.aborted) {
+      pendingRef.current = false;
+      return;
+    }
+
+    if (backendReply) {
+      const fallback = buildLocalFallbackReply(text, catalog);
+      const aiReply: ChatMessage = {
+        id: `ai-${++messageIdRef.current}`,
+        sender: 'ai',
+        text: backendReply.replyText,
+        detectedMood: backendReply.detectedMood,
+        targetBpm: backendReply.targetBpm,
+        recommendedSongs:
+          backendReply.recommendedSongs.length > 0
+            ? backendReply.recommendedSongs
+            : fallback.recommendedSongs,
+      };
+      setMessages((prev) => [...prev, aiReply]);
+      setIsTyping(false);
+      pendingRef.current = false;
+      return;
+    }
+
+    // Fallback to local mood analysis when backend is offline
+    timerRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      const fallback = buildLocalFallbackReply(text, catalog);
 
       const aiReply: ChatMessage = {
         id: `ai-${++messageIdRef.current}`,
         sender: 'ai',
-        text: replyText,
-        detectedMood,
-        targetBpm,
-        recommendedSongs: recommended,
+        text: fallback.replyText,
+        detectedMood: fallback.detectedMood,
+        targetBpm: fallback.targetBpm,
+        recommendedSongs: fallback.recommendedSongs,
       };
 
       setMessages((prev) => [...prev, aiReply]);
       setIsTyping(false);
       pendingRef.current = false;
       timerRef.current = null;
-    }, 900);
+    }, 500);
   };
 
   if (!isAiDrawerOpen) return null;
 
   return (
-    <aside ref={panelRef} role="dialog" aria-label="Trò chuyện demo · có thể sử dụng thanh phát nhạc" tabIndex={-1} data-chat className="fixed top-0 right-0 bottom-[132px] sm:bottom-[88px] w-full sm:w-[420px] bg-white dark:bg-[#0B0F19] border-l border-slate-200 dark:border-white/10 z-50 flex flex-col justify-between animate-in slide-in-from-right transition-colors">
+    <aside data-overlay-panel ref={panelRef} role="dialog" aria-label="Trò chuyện cảm xúc · có thể sử dụng thanh phát nhạc" tabIndex={-1} data-chat className="fixed top-0 right-0 bottom-player w-full sm:w-[420px] bg-surface-chrome border-l border-border-hairline z-50 flex flex-col justify-between animate-in slide-in-from-right transition-colors">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/[0.02]">
+      <div className="p-4 border-b border-border-hairline flex items-center justify-between bg-surface-raised">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-700 dark:text-slate-300">
             <MessageCircle className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>Trò chuyện</span>
-              <span className="px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 font-medium">
-                Demo
-              </span>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              Trò chuyện cảm xúc
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Phân tích tâm trạng & gợi ý Playlist
@@ -163,7 +233,7 @@ export const AiChatDrawer: React.FC = () => {
             <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
               {msg.sender === 'user' ? (
                 <>
-                  <span>Anh Đạt</span>
+                  <span>{authUser?.fullName ?? 'Bạn'}</span>
                   <User className="w-3 h-3" />
                 </>
               ) : (
@@ -197,50 +267,50 @@ export const AiChatDrawer: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-mono">
-                  BPM khuyến nghị: {msg.targetBpm} BPM
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  BPM khuyến nghị: <span className="font-mono tabular-nums">{msg.targetBpm}</span> BPM
                 </div>
 
                 {/* Recommended Songs Preview */}
                 {msg.recommendedSongs && (
-                  <div className="flex flex-col gap-1.5 pt-2 border-t border-indigo-200/60 dark:border-white/10">
+                  <div className="flex flex-col gap-1.5 pt-2 border-t border-border-hairline">
                     <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                       Playlist Đề Xuất:
                     </span>
                     {msg.recommendedSongs.map((song) => (
-                      <div
+                      <button
+                        type="button"
                         key={song.id}
+                        aria-label={`Phát ${song.title} · ${song.artist}`}
                         onClick={() => playSong(song)}
-                        className="flex items-center justify-between p-2 rounded-lg bg-white/80 hover:bg-white dark:bg-black/40 dark:hover:bg-white/10 border border-slate-200 dark:border-white/5 cursor-pointer transition-colors group shadow-sm dark:shadow-none"
+                        className="flex min-h-11 w-full items-center justify-between gap-2 p-2 rounded-lg bg-surface-card hover:bg-surface-card-hover border border-border-hairline transition-colors group text-left"
                       >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="relative w-8 h-8 rounded overflow-hidden shrink-0">
-                            <Image
+                        <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                          <div className="relative w-8 h-8 rounded overflow-hidden bg-surface-raised shrink-0">
+                            <CoverImage
                               src={song.coverUrl}
-                              alt={song.title}
-                              fill
-                              className="object-cover"
-                              unoptimized
+                              alt=""
+                              sizes="32px"
+                              iconSize={16}
                             />
                           </div>
-                          <div className="flex flex-col overflow-hidden">
-                            <span className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                          <div className="flex min-w-0 flex-col overflow-hidden">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
                               {song.title}
                             </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
                               {song.artist}
                             </span>
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          aria-label={`Phát ${song.title}`}
-                          className="w-11 h-11 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0"
+                        <span
+                          aria-hidden="true"
+                          className="w-9 h-9 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0"
                         >
-                          <Play className="w-3 h-3 fill-slate-950 translate-x-0.5" />
-                        </button>
-                      </div>
+                          <Play className="w-3.5 h-3.5 fill-current translate-x-0.5" />
+                        </span>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -252,14 +322,14 @@ export const AiChatDrawer: React.FC = () => {
         {isTyping && (
           <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 py-2">
             <LoaderCircle className="w-4 h-4 animate-spin" />
-            <span>Đang chuẩn bị gợi ý...</span>
+            <span>Đang chuẩn bị gợi ý…</span>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Quick Prompts Suggestions */}
-      <details className="shrink-0 px-3 border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20">
+      <details className="shrink-0 px-3 border-t border-border-hairline bg-surface-raised">
         <summary className="min-h-11 cursor-pointer py-3 text-sm text-slate-600 dark:text-slate-400 font-medium">Gợi ý nhanh tâm trạng</summary>
         <div className="flex max-h-40 overflow-y-auto flex-wrap gap-1.5 pb-3">
           {QUICK_PROMPTS.map((p, idx) => (
@@ -268,7 +338,7 @@ export const AiChatDrawer: React.FC = () => {
               key={idx}
               disabled={isTyping}
               onClick={() => handleSendMessage(p)}
-              className="min-h-11 text-sm px-3 py-2 rounded-lg hover:bg-slate-100 text-slate-700 dark:hover:bg-white/5 dark:text-slate-300 transition-colors max-w-full text-left [overflow-wrap:anywhere]"
+              className="min-h-11 text-sm px-3 py-2 rounded-lg hover:bg-surface-card text-slate-700 dark:text-slate-300 transition-colors max-w-full text-left [overflow-wrap:anywhere] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {p}
             </button>
@@ -277,7 +347,7 @@ export const AiChatDrawer: React.FC = () => {
       </details>
 
       {/* Input Box */}
-      <div className="p-3.5 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-[#070A10] flex items-center gap-2">
+      <div className="p-3.5 border-t border-border-hairline bg-surface-chrome flex items-center gap-2">
         <label htmlFor="chat-message" className="sr-only">Tin nhắn trò chuyện</label>
         <input
           id="chat-message"
@@ -289,14 +359,14 @@ export const AiChatDrawer: React.FC = () => {
           onChange={(e) => setInputMessage(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSendMessage()}
           placeholder="Tâm sự tâm trạng của anh hôm nay..."
-          className="min-w-0 h-11 flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 text-base text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+          className="min-w-0 h-11 flex-1 bg-surface-raised border border-border-hairline rounded-lg px-3 text-base text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors"
         />
         <button
           type="button"
           aria-label="Gửi tin nhắn"
           disabled={isTyping || !inputMessage.trim()}
           onClick={() => handleSendMessage()}
-          className="w-11 h-11 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white flex items-center justify-center shrink-0 transition-colors"
+          className="w-11 h-11 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white flex items-center justify-center shrink-0 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send className="w-4 h-4" />
         </button>

@@ -1,32 +1,53 @@
-@import "tailwindcss";
+/* Hallmark · modern-minimal · ink-emerald */
 
-/* Cú pháp đúng 100% của Tailwind CSS v4 cho class-based Dark Mode */
+@import "tailwindcss";
+@import "./tokens.css";
+
 @variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: #090D16;
-  --foreground: #F9FAFB;
-  --player-height: calc(132px + env(safe-area-inset-bottom, 0px));
+@theme inline {
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-chrome: var(--surface-chrome);
+  --color-surface-topbar: var(--surface-topbar);
+  --color-surface-card: var(--surface-card);
+  --color-surface-card-hover: var(--surface-card-hover);
+  --color-surface-card-active: var(--surface-card-active);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-border-hairline: var(--border-hairline);
+  --color-border-accent: var(--border-accent-hover);
+  --spacing-player: var(--player-height);
 }
 
-@media (min-width: 640px) {
-  :root { --player-height: calc(88px + env(safe-area-inset-bottom, 0px)); }
+html,
+body {
+  overflow-x: clip;
 }
-
-[data-player] {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.player-range { height: 24px; background: transparent; }
-.player-range::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: #94a3b8; }
-.player-range::-webkit-slider-thumb { margin-top: -4px; }
-.player-range::-moz-range-track { height: 4px; border-radius: 999px; background: #94a3b8; }
-
-#main-content { scroll-padding-block: 16px; }
-[inert] { pointer-events: none; }
 
 html.dark {
   color-scheme: dark;
+}
+
+html.liquid-glass {
+  color-scheme: dark;
+}
+
+html.liquid-glass body {
+  background-color: var(--bg-glass-base);
+  background-image: radial-gradient(at 0% 0%, var(--bg-glass-mesh-1) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, var(--bg-glass-mesh-2) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+html.liquid-glass [data-player],
+html.liquid-glass aside,
+html.liquid-glass header,
+html.liquid-glass section,
+html.liquid-glass article,
+html.liquid-glass [data-card-surface] {
+  backdrop-filter: var(--glass-blur, blur(20px) saturate(190%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px) saturate(190%));
+  box-shadow: var(--glass-shadow);
 }
 
 html.light {
@@ -34,53 +55,119 @@ html.light {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow-x: hidden;
+  font-family: var(--font-sans);
 }
 
-button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #10b981;
-  outline-offset: 3px;
+#music-app {
+  padding-bottom: var(--player-height);
+}
+
+[data-player] {
+  height: var(--player-height);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+[data-overlay-panel] {
+  bottom: var(--player-height);
+}
+
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.player-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--range-fill) 0%,
+    var(--range-fill) var(--range-progress, 0%),
+    var(--range-track) var(--range-progress, 0%),
+    var(--range-track) 100%
+  );
+}
+
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--range-fill);
+}
+
+.player-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-track);
+}
+
+.player-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-fill);
+}
+
+.player-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--range-fill);
+}
+
+#main-content {
+  scroll-padding-block: 16px;
+}
+
+[inert] {
+  pointer-events: none;
+}
+
+button,
+[role="button"],
+summary {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-/* Glassmorphism chuẩn xác theo từng theme */
-.glass-panel {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-/* DARK MODE: Card nền tối bán trong suốt, viền sáng nhẹ, chữ trắng */
-.dark .glass-card {
-  background: rgba(31, 41, 55, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #F9FAFB !important;
-  box-shadow: none;
-}
-
-.dark .glass-card:hover {
-  background: rgba(31, 41, 55, 0.8) !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
-    box-shadow: none;
-}
-
-/* LIGHT MODE: Card nền trắng sáng, viền xám nhẹ, chữ đen tuyền */
-.light .glass-card {
-  background: #FFFFFF !important;
-  border: 1px solid #E2E8F0 !important;
-  color: #0F172A !important;
-  box-shadow: none;
-}
-
-.light .glass-card:hover {
-  border-color: rgba(16, 185, 129, 0.6) !important;
-  box-shadow: none;
-}
-
-/* Custom Scrollbar - Neon Glow Style */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -91,23 +178,19 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #64748b;
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Spotify Stealth Scrollbar for Main Feeds */
 .spotify-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
-}
-
-.dark .spotify-scroll {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: var(--feed-scrollbar) transparent;
 }
 
 .spotify-scroll::-webkit-scrollbar {
@@ -115,12 +198,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .spotify-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--feed-scrollbar);
   border-radius: 9999px;
-}
-
-.dark .spotify-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Vinyl rotation animation */
@@ -167,8 +246,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .animate-in {
-  animation-duration: 250ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   animation-fill-mode: both;
 }
 
@@ -179,3 +258,15 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .slide-in-from-right {
   animation-name: slideInFromRight;
 }
+
+/* Permanently hide Next.js dev indicator / badge */
+nextjs-portal,
+[data-nextjs-toast],
+[data-nextjs-dialog],
+[data-nextjs-portal] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+

@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PlanTier {
+  FREE
+  VIP
+}
+
+enum MoodType {
+  chill
+  sad
+  energetic
+  focus
+  acoustic
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model User {
+  id           String    @id @db.VarChar(64)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
+  fullName     String    @map("full_name") @db.VarChar(150)
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  googleId     String?   @unique @map("google_id") @db.VarChar(128)
+  role         UserRole  @default(USER)
+  planTier     PlanTier  @default(FREE) @map("plan_tier")
+  vipExpiresAt DateTime? @map("vip_expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  likedSongs          UserSongLike[]
+  playlists           Playlist[]
+  aiChatLogs          AiChatLog[]
+  paymentTransactions PaymentTransaction[]
+
+  @@map("users")
+}
+
+model Song {
+  id        String   @id @db.VarChar(64)
+  title     String   @db.VarChar(200)
+  artist    String   @db.VarChar(200)
+  album     String   @db.VarChar(200)
+  duration  Int
+  audioUrl  String   @map("audio_url") @db.VarChar(500)
+  coverUrl  String   @map("cover_url") @db.VarChar(500)
+  lyricsUrl String?  @map("lyrics_url") @db.VarChar(500)
+  mood      MoodType
+  moodLabel String   @map("mood_label") @db.VarChar(100)
+  bpm       Int
+  playCount Int      @default(0) @map("play_count")
+  isVipOnly Boolean  @default(false) @map("is_vip_only")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  likedByUsers    UserSongLike[]
+  playlistEntries PlaylistSong[]
+
+  @@index([mood], map: "idx_songs_mood")
+  @@index([playCount], map: "idx_songs_play_count")
+  @@map("songs")
+}
+
+model UserSongLike {
+  userId    String   @map("user_id") @db.VarChar(64)
+  songId    String   @map("song_id") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([userId, songId])
+  @@index([songId], map: "idx_user_song_likes_song_id")
+  @@map("user_song_likes")
+}
+
+model Playlist {
+  id            String    @id @db.VarChar(64)
+  userId        String?   @map("user_id") @db.VarChar(64)
+  title         String    @db.VarChar(120)
+  description   String    @db.Text
+  coverUrl      String    @map("cover_url") @db.VarChar(500)
+  mood          MoodType?
+  isAiGenerated Boolean   @default(false) @map("is_ai_generated")
+  isPublic      Boolean   @default(true) @map("is_public")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user       User?          @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  songs      PlaylistSong[]
+  aiChatLogs AiChatLog[]
+
+  @@index([userId], map: "idx_playlists_user_id")
+  @@index([mood], map: "idx_playlists_mood")
+  @@map("playlists")
+}
+
+model PlaylistSong {
+  playlistId String   @map("playlist_id") @db.VarChar(64)
+  songId     String   @map("song_id") @db.VarChar(64)
+  position   Int      @default(0)
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([playlistId, songId])
+  @@index([songId], map: "idx_playlist_songs_song_id")
+  @@index([playlistId, position], map: "idx_playlist_songs_order")
+  @@map("playlist_songs")
+}
+
+model AiChatLog {
+  id                  String   @id @db.VarChar(64)
+  userId              String?  @map("user_id") @db.VarChar(64)
+  userMessage         String   @map("user_message") @db.Text
+  aiReply             String   @map("ai_reply") @db.Text
+  detectedMood        String   @map("detected_mood") @db.VarChar(64)
+  targetBpm           Int      @map("target_bpm")
+  generatedPlaylistId String?  @map("generated_playlist_id") @db.VarChar(64)
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  generatedPlaylist Playlist? @relation(fields: [generatedPlaylistId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId, createdAt], map: "idx_ai_chat_logs_user_created")
+  @@index([generatedPlaylistId], map: "idx_ai_chat_logs_playlist_id")
+  @@map("ai_chat_logs")
+}
+
+model PaymentTransaction {
+  id               String        @id @db.VarChar(64)
+  txnRef           String        @unique @map("txn_ref") @db.VarChar(64)
+  userId           String        @map("user_id") @db.VarChar(64)
+  amountVnd        Int           @map("amount_vnd")
+  status           PaymentStatus @default(PENDING)
+  vnpTransactionNo String?       @map("vnp_transaction_no") @db.VarChar(64)
+  rawIpnPayload    Json?         @map("raw_ipn_payload")
+  paidAt           DateTime?     @map("paid_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, createdAt], map: "idx_payment_txns_user_created")
+  @@index([status], map: "idx_payment_txns_status")
+  @@map("payment_transactions")
+}

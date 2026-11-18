@@ -2,11 +2,11 @@
 
 import { create } from 'zustand';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'liquid-glass';
 
 interface ThemeStore {
   theme: ThemeMode;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: 'light' | 'dark' | 'liquid-glass';
   setTheme: (theme: ThemeMode) => void;
   initTheme: () => (() => void) | undefined;
 }
@@ -16,17 +16,20 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function applyThemeToDocument(theme: ThemeMode): 'light' | 'dark' {
+function applyThemeToDocument(theme: ThemeMode): 'light' | 'dark' | 'liquid-glass' {
   if (typeof document === 'undefined') return 'dark';
   const resolved = theme === 'system' ? getSystemTheme() : theme;
   const root = document.documentElement;
 
-  if (resolved === 'dark') {
-    root.classList.add('dark');
+  if (resolved === 'liquid-glass') {
+    root.classList.add('dark', 'liquid-glass');
     root.classList.remove('light');
+  } else if (resolved === 'dark') {
+    root.classList.add('dark');
+    root.classList.remove('light', 'liquid-glass');
   } else {
     root.classList.add('light');
-    root.classList.remove('dark');
+    root.classList.remove('dark', 'liquid-glass');
   }
 
   return resolved;
@@ -54,7 +57,7 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     let savedTheme: ThemeMode = 'system';
     try {
       const stored = localStorage.getItem('dmptify-theme') as ThemeMode | null;
-      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      if (stored === 'light' || stored === 'dark' || stored === 'system' || stored === 'liquid-glass') {
         savedTheme = stored;
       }
     } catch (e) {

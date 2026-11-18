@@ -37,7 +37,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="h-full bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-white antialiased overflow-hidden transition-colors duration-300" suppressHydrationWarning>
+      <body className="h-full bg-surface-canvas text-slate-900 dark:text-white antialiased transition-colors duration-300" suppressHydrationWarning>
         {children}
       </body>
     </html>

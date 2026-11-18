@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useThemeStore, ThemeMode } from '../../store/useThemeStore';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, Sparkles } from 'lucide-react';
 
 export const ThemeSwitcher: React.FC = () => {
   const theme = useThemeStore((s) => s.theme);
@@ -34,10 +34,18 @@ export const ThemeSwitcher: React.FC = () => {
   const modes: { id: ThemeMode; label: string }[] = [
     { id: 'light', label: 'Sáng' },
     { id: 'dark', label: 'Tối' },
+    { id: 'liquid-glass', label: 'Thủy tinh' },
     { id: 'system', label: 'Hệ thống' },
   ];
 
-  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
+  const ThemeIcon =
+    theme === 'light'
+      ? Sun
+      : theme === 'dark'
+        ? Moon
+        : theme === 'liquid-glass'
+          ? Sparkles
+          : Monitor;
 
   return (
     <div className="relative" ref={menuRef} onKeyDown={e => { if (e.key === 'Escape') { setIsOpen(false); menuRef.current?.querySelector('button')?.focus(); } }}>
@@ -55,7 +63,7 @@ export const ThemeSwitcher: React.FC = () => {
 
       {/* Menu dropdown hiện ra khi bấm */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-32 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-2xl p-1 z-50 animate-in fade-in duration-150">
+        <div className="absolute right-0 top-full mt-2 w-36 rounded-xl bg-surface-overlay border border-border-hairline shadow-lg p-1 z-50 animate-in fade-in duration-150">
           {modes.map((m) => {
             const isActive = theme === m.id;
             return (

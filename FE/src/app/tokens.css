@@ -1,0 +1,75 @@
+/* Hallmark · modern-minimal · ink-emerald */
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --player-height: calc(132px + env(safe-area-inset-bottom, 0px));
+
+  /* Light Mode — Ink Ramp */
+  --surface-canvas: #f8fafc;
+  --surface-chrome: #ffffff;
+  --surface-topbar: rgba(255, 255, 255, 0.95);
+  --surface-card: #ffffff;
+  --surface-card-hover: #f8fafc;
+  --surface-card-active: #ecfdf5;
+  --surface-raised: #f1f5f9;
+  --surface-overlay: #ffffff;
+  --border-hairline: #e2e8f0;
+  --border-accent-hover: rgba(16, 185, 129, 0.55);
+  --focus-ring: #047857;
+  --range-track: #94a3b8;
+  --range-fill: #10b981;
+  --scrollbar-thumb: #64748b;
+  --scrollbar-thumb-hover: #475569;
+  --feed-scrollbar: rgba(148, 163, 184, 0.35);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --player-height: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.dark {
+  /* Dark Mode — Ink Depth: Chrome (#07080d) < Canvas (#0b0d14) < Card (#11141c) */
+  --surface-canvas: #0b0d14;
+  --surface-chrome: #07080d;
+  --surface-topbar: rgba(11, 13, 20, 0.95);
+  --surface-card: #11141c;
+  --surface-card-hover: #171b26;
+  --surface-card-active: rgba(16, 185, 129, 0.12);
+  --surface-raised: #1a1e28;
+  --surface-overlay: #11141c;
+  --border-hairline: rgba(238, 240, 245, 0.08);
+  --border-accent-hover: rgba(16, 185, 129, 0.45);
+  --focus-ring: #10b981;
+  --range-track: #64748b;
+  --range-fill: #10b981;
+  --scrollbar-thumb: #64748b;
+  --scrollbar-thumb-hover: #94a3b8;
+  --feed-scrollbar: rgba(255, 255, 255, 0.16);
+}
+
+.liquid-glass {
+  /* Liquid Glass Mode — Translucent Refraction & Specular Depth */
+  --bg-glass-base: #07090e;
+  --bg-glass-mesh-1: rgba(16, 185, 129, 0.12);
+  --bg-glass-mesh-2: rgba(16, 185, 129, 0.05);
+  --surface-canvas: rgba(11, 13, 20, 0.75);
+  --surface-chrome: rgba(15, 23, 42, 0.55);
+  --surface-topbar: rgba(15, 23, 42, 0.65);
+  --surface-card: rgba(255, 255, 255, 0.06);
+  --surface-card-hover: rgba(255, 255, 255, 0.11);
+  --surface-card-active: rgba(16, 185, 129, 0.2);
+  --surface-raised: rgba(255, 255, 255, 0.08);
+  --surface-overlay: rgba(15, 23, 42, 0.88);
+  --border-hairline: rgba(255, 255, 255, 0.16);
+  --border-accent-hover: rgba(52, 211, 153, 0.7);
+  --focus-ring: #34d399;
+  --range-track: rgba(255, 255, 255, 0.25);
+  --range-fill: #10b981;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.25);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
+  --feed-scrollbar: rgba(255, 255, 255, 0.2);
+  --glass-blur: blur(20px) saturate(190%);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}

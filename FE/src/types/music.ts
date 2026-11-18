@@ -14,6 +14,8 @@ export interface Song {
   audioUrl: string;
   coverUrl: string;
   lyricsUrl?: string;
+  youtubeVideoId?: string;
+  playCount?: number;
   mood: MoodType;
   moodLabel: string;
   bpm: number;
