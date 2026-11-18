@@ -4,19 +4,29 @@ node_modules/
 .pnp
 .pnp.js
 
-# Build outputs
+# Build & Cache outputs
 dist/
 **/dist/
 .next/
+**/.next/
 out/
+**/out/
 build/
+**/build/
+coverage/
+**/coverage/
 *.tsbuildinfo
+**/*.tsbuildinfo
 next-env.d.ts
+**/next-env.d.ts
 
 # Environment
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
 
 # Logs
 *.log
@@ -29,3 +39,13 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Local AI / Skill / Framework / Context helpers (keep local, never commit)
+aidlc-docs/
+docs/agents/
+dmptify_code_context.md
+scripts/export-context.ps1
+.agents/
+.agent/
+_agents/
+_agent/

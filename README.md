@@ -37,7 +37,7 @@ flowchart TD
         UI["Web App (Music Player + AI Chat Drawer + Visualizer)"]
     end
 
-    subgraph CoreBackend ["Core Backend (Node.js / Express)"]
+    subgraph CoreBackend ["Core Backend (NestJS 12 / TypeScript)"]
         API["API Gateway & Controllers"]
         AudioService["Audio Streaming Engine"]
         PaymentService["Payment & Subscription Module"]
@@ -75,7 +75,7 @@ flowchart TD
 ## 🛠️ 4. Công Nghệ Sử Dụng (Tech Stack)
 
 - **Frontend:** React.js / Next.js, Tailwind CSS, Web Audio API, Lucide Icons, Framer Motion.
-- **Backend:** Node.js, Express.js (RESTful API, Clean Architecture).
+- **Backend:** Node.js, NestJS 12, TypeScript (Modular Architecture, RESTful API).
 - **Cơ sở dữ liệu:** PostgreSQL / MongoDB (Docker Compose).
 - **Tích hợp AI:** Google Gemini 2.5 Flash API (Function Calling & Prompt Engineering).
 - **Tích hợp Ngoại vi:**
@@ -106,10 +106,10 @@ flowchart TD
 
 ```text
 DMPTiFy_MusicAI/
-├── client/                               # Frontend Web App (Next.js / React + Tailwind CSS)
-├── server/                               # Backend Core API (Node.js / Express)
-├── docker-compose.yml                    # Docker khởi chạy Database cục bộ
-├── .gitignore                            # Cấu hình bỏ qua tệp tạm
+├── FE/                                   # Frontend Web App (Next.js 16 + React 19 + Tailwind CSS v4 + Zustand)
+├── BE/                                   # Backend Core API (NestJS 12 + TypeScript + Vitest)
+├── package.json                          # Script điều phối nhanh FE & BE từ thư mục gốc
+├── .gitignore                            # Cấu hình bỏ qua tệp tạm & công cụ cục bộ
 └── README.md                             # Tài liệu tổng quan dự án
 ```
 
